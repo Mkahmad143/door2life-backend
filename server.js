@@ -1,4 +1,5 @@
 require("dotenv").config();
+const connectDb = require("./utils/db");
 const express = require("express");
 const cors = require("cors");
 
@@ -7,10 +8,8 @@ const adminRoutes = require("./Routes/auth-router/adminRouter");
 const refRouter = require("./Routes/Ref-Routes/refRouter");
 const userRoutes = require("./Routes/User-router/userRouter");
 const bankRoutes = require("./Routes/bank-Router/bankRouter");
-
 const messageRoutes = require("./Routes/Messgae-Router/messageRouter");
 
-const connectDb = require("./utils/db");
 const app = express();
 
 const PORT = 8000;
