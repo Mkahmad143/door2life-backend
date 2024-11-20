@@ -33,7 +33,14 @@ const userSchema = new mongoose.Schema({
       status: { type: String, enum: ["pending", "paid"], default: "pending" },
     },
   ],
+  pendingPayments: [
+    {
+      requester: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      amount: { type: Number, required: true },
+    },
+  ],
 });
+
 userSchema.pre("save", async function (next) {
   const user = this;
 

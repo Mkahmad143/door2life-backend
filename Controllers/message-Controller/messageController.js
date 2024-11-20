@@ -6,7 +6,6 @@ const paymentRequest = async (req, res) => {
   const { requesterId, recipientId, amount } = req.body;
 
   try {
-    // Find the requester and recipient
     const requester = await User.findById(requesterId);
     const recipient = await User.findById(recipientId);
 
@@ -16,20 +15,23 @@ const paymentRequest = async (req, res) => {
         .json({ message: "Requester or recipient not found" });
     }
 
-    // Add the payment request to the requester's schema
+    // Add payment request to requester's schema
     requester.paymentRequests.push({
       recipient: recipientId,
       amount,
       status: "pending",
     });
 
-    const response = await requester.save();
-
-    // Respond with success
-    res.status(201).json({
-      res: response,
-      message: "Payment request created successfully.",
+    // Add to recipient's pendingPayments
+    recipient.pendingPayments.push({
+      requester: requesterId,
+      amount,
     });
+
+    await requester.save();
+    await recipient.save();
+
+    res.status(201).json({ message: "Payment request created successfully." });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error. Please try again." });
@@ -42,7 +44,7 @@ const getPayment = async (req, res) => {
   try {
     const user = await User.findById(id).populate(
       "paymentRequests.recipient",
-      "username email"
+      "username email doorStatus"
     );
 
     if (!user) {
@@ -60,14 +62,14 @@ const markAsPaid = async (req, res) => {
   const { requesterId, recipientId } = req.body;
 
   try {
-    // Find the requester
+    // Find the requester and recipient
     const requester = await User.findById(requesterId);
+    const recipient = await User.findById(recipientId);
 
-    if (!requester) {
-      return res.status(404).json({ message: "Requester not found" });
+    if (!requester || !recipient) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // Find the specific payment request
     const request = requester.paymentRequests.find(
       (r) => r.recipient.toString() === recipientId && r.status === "pending"
     );
@@ -78,29 +80,36 @@ const markAsPaid = async (req, res) => {
         .json({ message: "Pending payment request not found" });
     }
 
-    // Mark the payment as paid
+    // Mark the payment as paid in the requester's schema
     request.status = "paid";
 
-    // Save the updated user
-    await requester.save();
+    // Remove the payment request from the recipient's pendingPayments
+    recipient.pendingPayments = recipient.pendingPayments.filter(
+      (payment) => payment.requester.toString() !== requesterId
+    );
 
-    // Check the total number of paid payments
+    await requester.save();
+    await recipient.save();
+
     const paidCount = requester.paymentRequests.filter(
       (payment) => payment.status === "paid"
     ).length;
 
-    // Unlock doors in increments of 8 paid payments
-    for (let i = 1; i <= 14; i++) {
-      if (paidCount >= i * 8 && !requester.doorStatus[i]) {
-        requester.doorStatus[i] = true; // Unlock the i-th door
-      }
+    const totalDoors = 14;
+    const paymentsPerDoor = 8;
+
+    const doorIndex = Math.floor(paidCount / paymentsPerDoor);
+    console.log(doorIndex);
+
+    if (doorIndex < totalDoors) {
+      requester.doorStatus[doorIndex + 1] = true;
+      console.log(`Door ${doorIndex} unlocked!`);
     }
 
-    // Save the updated door status
     await requester.save();
 
     res.status(200).json({
-      message: "Payment marked as paid.",
+      message: "Payment marked as paid and doors updated.",
       doorStatus: requester.doorStatus,
     });
   } catch (error) {
@@ -138,10 +147,30 @@ const deletePaymentRequest = async (req, res) => {
     res.status(500).json({ message: "Server error. Please try again." });
   }
 };
+const getPendingPayments = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await User.findById(id).populate(
+      "pendingPayments.requester",
+      "username email phone doorStatus"
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user.pendingPayments);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error. Please try again." });
+  }
+};
 
 module.exports = {
   paymentRequest,
   getPayment,
   markAsPaid,
   deletePaymentRequest,
+  getPendingPayments,
 };

@@ -93,5 +93,27 @@ const deleteUser = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+const doorStatus = async (req, res) => {
+  try {
+    const userId = req.params.id;
 
-module.exports = { getUserById, deleteUser, updateUser, getUserByEmail };
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ Error: "User not found" });
+    }
+
+    res.status(200).json({ doorStatus: user.doorStatus });
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ Error: "Server Error" });
+  }
+};
+
+module.exports = {
+  getUserById,
+  deleteUser,
+  updateUser,
+  getUserByEmail,
+  doorStatus,
+};

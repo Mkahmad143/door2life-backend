@@ -6,6 +6,8 @@ const messageController = require("../../Controllers/message-Controller/messageC
 router.get("/payment-requests/:id", messageController.getPayment);
 router.post("/payment-requests", messageController.paymentRequest);
 router.patch("/payment-requests/:id", messageController.markAsPaid);
+router.get("/pending-requests/:id", messageController.getPendingPayments);
+
 router.delete(
   "/delete-payment-request",
   messageController.deletePaymentRequest
