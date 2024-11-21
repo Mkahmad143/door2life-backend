@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const { mongoose } = require("mongoose");
 
 const paymentRequestSchema = new mongoose.Schema({
   requester: {
@@ -12,7 +12,12 @@ const paymentRequestSchema = new mongoose.Schema({
     required: true,
   },
   amount: { type: Number, required: true },
-  status: { type: String, enum: ["pending", "paid"], default: "pending" },
+  door: { type: String, required: true },
+  status: {
+    type: String,
+    enum: ["pending", "paid", "waiting for approval"],
+    default: "pending",
+  },
   createdAt: { type: Date, default: Date.now },
 });
 

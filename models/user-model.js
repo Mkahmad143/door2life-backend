@@ -30,7 +30,11 @@ const userSchema = new mongoose.Schema({
     {
       recipient: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       amount: { type: Number, required: true },
-      status: { type: String, enum: ["pending", "paid"], default: "pending" },
+      status: {
+        type: String,
+        enum: ["pending", "paid", "waiting for approval"],
+        default: "pending",
+      },
     },
   ],
   pendingPayments: [
