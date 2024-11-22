@@ -19,12 +19,11 @@ const paymentRequest = async (req, res) => {
     // Check if a request already exists for the same door
     const existingRequest = requester.paymentRequests.find(
       (request) =>
-        (request.recipient.toString() === recipientId &&
-          request.door === door) ||
+        request.recipient.toString() === recipientId &&
+        request.door === door &&
         request.status === ("pending" || "waiting for approval")
     );
     console.log("existingRequest", existingRequest);
-    foofoo;
 
     // Prevent multiple requests for the same door
     if (existingRequest) {
@@ -109,6 +108,14 @@ const markAsPaid = async (req, res) => {
 
     // Update status to "paid"
     paymentRequest.status = "paid";
+    // Remove the payment request from the recipient's paymentRequests
+    recipient.paymentRequests = recipient.paymentRequests.filter(
+      (r) =>
+        !(
+          r.sender.toString() === requesterId &&
+          r.status === "waiting for approval"
+        )
+    );
 
     await requester.save();
     await recipient.save();
@@ -157,7 +164,7 @@ const getPendingPayments = async (req, res) => {
   try {
     const user = await User.findById(id).populate(
       "pendingPayments.requester",
-      "username email phone doorStatus"
+      "username email phone doorStatus paymentRequests"
     );
 
     if (!user) {
