@@ -42,7 +42,7 @@ const getUserByEmail = async (req, res) => {
 
 const updateUser = async (req, res) => {
   const { id } = req.params;
-  const { username, email, password } = req.body;
+  const { username, email, password, phone } = req.body;
 
   try {
     // Find the user
@@ -54,6 +54,8 @@ const updateUser = async (req, res) => {
     // Update fields if provided
     if (username) user.username = username;
     if (email) user.email = email;
+    if (phone) user.phone = phone;
+
     if (password) user.password = password; // Just assign, let pre('save') handle hashing
 
     // Save user (called only once)
@@ -62,10 +64,7 @@ const updateUser = async (req, res) => {
     res.status(200).json({
       message: "User updated successfully",
       user: {
-        username: updatedUser.username,
-        email: updatedUser.email,
-        password: updatedUser.password,
-        referralCode: updatedUser.referralCode, // Keep referralCode intact
+        updatedUser: updatedUser,
       },
     });
   } catch (error) {

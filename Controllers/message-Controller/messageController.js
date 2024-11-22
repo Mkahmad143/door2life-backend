@@ -1,58 +1,68 @@
-const PaymentRequest = require("../../models/message-model");
 const User = require("../../models/user-model");
 
-// Create a payment request
 const paymentRequest = async (req, res) => {
-  const { requesterId, recipientId, amount, door } = req.body; // Include `door` in the request body
+  const { requesterId, recipientId, amount, door } = req.body;
+  console.log(req.body);
 
   try {
+    // Fetch users from the database
     const requester = await User.findById(requesterId);
     const recipient = await User.findById(recipientId);
 
+    // Validate users
     if (!requester || !recipient) {
       return res
         .status(404)
-        .json({ message: "Requester or recipient not found" });
+        .json({ message: "Requester or recipient not found." });
     }
 
-    // Check if a request already exists for the same door between the same requester and recipient
+    // Check if a request already exists for the same door
     const existingRequest = requester.paymentRequests.find(
       (request) =>
-        request.recipient.toString() === recipientId &&
-        request.door === door &&
-        request.status === "pending" // Ensures it checks for active requests
+        (request.recipient.toString() === recipientId &&
+          request.door === door) ||
+        request.status === ("pending" || "waiting for approval")
     );
+    console.log("existingRequest", existingRequest);
+    foofoo;
 
+    // Prevent multiple requests for the same door
     if (existingRequest) {
-      return res
-        .status(400)
-        .json({ message: "A payment request already exists for this door." });
+      return res.status(400).json({
+        message:
+          "A payment request for this door already exists, regardless of its status.",
+      });
     }
 
-    // Add payment request to requester's schema
-    requester.paymentRequests.push({
+    // Create new payment request
+    const newRequest = {
       recipient: recipientId,
       amount,
-      door, // Add the door to the request
-      status: "pending",
-    });
+      door: door,
+      status: "pending", // Set initial status to "pending"
+    };
 
-    // Add to recipient's pendingPayments
+    // Update requester and recipient records
+    requester.paymentRequests.push(newRequest);
     recipient.pendingPayments.push({
       requester: requesterId,
       amount,
-      door, // Add the door to the pending payment
+      door,
     });
 
+    // Save updates
     await requester.save();
     await recipient.save();
 
+    // Respond with success
     res.status(201).json({ message: "Payment request created successfully." });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error. Please try again." });
   }
 };
+
+module.exports = paymentRequest;
 
 const getPayment = async (req, res) => {
   const { id } = req.params;
@@ -85,6 +95,7 @@ const markAsPaid = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Find the payment request in the requester's paymentRequests
     const paymentRequest = requester.paymentRequests.find(
       (r) =>
         r.recipient.toString() === recipientId &&
@@ -100,16 +111,21 @@ const markAsPaid = async (req, res) => {
     // Update status to "paid"
     paymentRequest.status = "paid";
 
-    // Remove from recipient's pendingPayments
-    recipient.pendingPayments = recipient.pendingPayments.filter(
-      (payment) => payment.requester.toString() !== requesterId
+    // Remove the payment request from the recipient's paymentRequests
+    recipient.paymentRequests = recipient.paymentRequests.filter(
+      (r) =>
+        !(
+          r.sender.toString() === requesterId &&
+          r.status === "waiting for approval"
+        )
     );
 
+    // Save changes to both users
     await requester.save();
     await recipient.save();
 
     res.status(200).json({
-      message: "Payment marked as paid.",
+      message: "Payment marked as paid and removed from recipient.",
     });
   } catch (error) {
     console.error(error);
@@ -160,6 +176,10 @@ const getPendingPayments = async (req, res) => {
     }
 
     res.status(200).json(user.pendingPayments);
+    // Extract the IDs as strings
+    const paymentIds = user.pendingPayments.map((payment) =>
+      payment._id.toString()
+    );
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error. Please try again." });
