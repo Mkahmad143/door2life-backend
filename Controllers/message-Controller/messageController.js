@@ -23,8 +23,6 @@ const paymentRequest = async (req, res) => {
           request.door === door) ||
         request.status === ("pending" || "waiting for approval")
     );
-    console.log("existingRequest", existingRequest);
-    foofoo;
 
     // Prevent multiple requests for the same door
     if (existingRequest) {
