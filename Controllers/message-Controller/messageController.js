@@ -23,6 +23,8 @@ const paymentRequest = async (req, res) => {
           request.door === door) ||
         request.status === ("pending" || "waiting for approval")
     );
+    console.log("existingRequest", existingRequest);
+    foofoo;
 
     // Prevent multiple requests for the same door
     if (existingRequest) {
@@ -93,7 +95,6 @@ const markAsPaid = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Find the payment request in the requester's paymentRequests
     const paymentRequest = requester.paymentRequests.find(
       (r) =>
         r.recipient.toString() === recipientId &&
@@ -109,21 +110,11 @@ const markAsPaid = async (req, res) => {
     // Update status to "paid"
     paymentRequest.status = "paid";
 
-    // Remove the payment request from the recipient's paymentRequests
-    recipient.paymentRequests = recipient.paymentRequests.filter(
-      (r) =>
-        !(
-          r.sender.toString() === requesterId &&
-          r.status === "waiting for approval"
-        )
-    );
-
-    // Save changes to both users
     await requester.save();
     await recipient.save();
 
     res.status(200).json({
-      message: "Payment marked as paid and removed from recipient.",
+      message: "Payment marked as paid.",
     });
   } catch (error) {
     console.error(error);
