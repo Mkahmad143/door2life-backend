@@ -16,20 +16,19 @@ const paymentRequest = async (req, res) => {
         .json({ message: "Requester or recipient not found." });
     }
 
-    // Check if a request already exists for the same door
+    // Check if any request exists for the same door (regardless of status)
     const existingRequest = requester.paymentRequests.find(
       (request) =>
         request.recipient.toString() === recipientId &&
         request.door === door &&
-        request.status === ("pending" || "waiting for approval")
+        ["pending", "waiting for approval", "paid"].includes(request.status)
     );
     console.log("existingRequest", existingRequest);
 
-    // Prevent multiple requests for the same door
+    // Prevent any request if one already exists in any of these statuses
     if (existingRequest) {
       return res.status(400).json({
-        message:
-          "A payment request for this door already exists, regardless of its status.",
+        message: `Cannot create new request. A payment request for door ${door} already exists with status: ${existingRequest.status}`,
       });
     }
 
@@ -38,7 +37,8 @@ const paymentRequest = async (req, res) => {
       recipient: recipientId,
       amount,
       door: door,
-      status: "pending", // Set initial status to "pending"
+      status: "pending",
+      createdAt: new Date(), // Adding timestamp for better tracking
     };
 
     // Update requester and recipient records
@@ -47,6 +47,7 @@ const paymentRequest = async (req, res) => {
       requester: requesterId,
       amount,
       door,
+      createdAt: new Date(),
     });
 
     // Save updates
@@ -54,9 +55,12 @@ const paymentRequest = async (req, res) => {
     await recipient.save();
 
     // Respond with success
-    res.status(201).json({ message: "Payment request created successfully." });
+    res.status(201).json({
+      message: "Payment request created successfully.",
+      request: newRequest,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Payment request error:", error);
     res.status(500).json({ message: "Server error. Please try again." });
   }
 };
@@ -106,25 +110,66 @@ const markAsPaid = async (req, res) => {
       });
     }
 
-    // Update status to "paid"
+    // Update payment status
     paymentRequest.status = "paid";
-    // Remove the payment request from the recipient's paymentRequests
-    recipient.paymentRequests = recipient.paymentRequests.filter(
-      (r) =>
-        !(
-          r.sender.toString() === requesterId &&
-          r.status === "waiting for approval"
-        )
+
+    // Remove pending payment
+    recipient.pendingPayments = recipient.pendingPayments.filter(
+      (r) => r.requester.toString() !== requesterId
     );
+
+    // Count paid payments for current door
+    const currentDoor = paymentRequest.door;
+    const paidPaymentsForDoor = requester.paymentRequests.filter(
+      (r) => r.door === currentDoor && r.status === "paid"
+    ).length;
+
+    let responseMessage = "Payment marked as paid.";
+    let doorUnlocked = false;
+
+    // Handle door 14 completion and reset
+    if (currentDoor === 14 && paidPaymentsForDoor >= 8) {
+      // Reset doors
+      for (let i = 2; i <= 14; i++) {
+        requester.doorStatus[i] = false;
+      }
+      requester.doorStatus[1] = true;
+
+      // Clear payment requests
+      requester.paymentRequests = [];
+
+      responseMessage += ` Congratulations! You've completed Door 14! All doors have been reset. Start again from Door 1.`;
+    }
+    // Normal door progression
+    else if (currentDoor < 14 && paidPaymentsForDoor >= 8) {
+      const nextDoor = currentDoor + 1;
+
+      if (!requester.doorStatus[nextDoor]) {
+        requester.doorStatus[nextDoor] = true;
+        doorUnlocked = true;
+        responseMessage += ` Congratulations! Door ${nextDoor} has been unlocked. Start making payments for Door ${nextDoor} to progress further.`;
+      }
+    }
+
+    // Add remaining payments info
+    if (!doorUnlocked && currentDoor < 14) {
+      const remainingPayments = 8 - paidPaymentsForDoor;
+      responseMessage += ` Need ${remainingPayments} more paid payments to unlock next door.`;
+    }
 
     await requester.save();
     await recipient.save();
 
     res.status(200).json({
-      message: "Payment marked as paid.",
+      message: responseMessage,
+      currentDoor,
+      paidPayments: paidPaymentsForDoor,
+      remainingPayments: currentDoor === 14 ? 8 : 8 - paidPaymentsForDoor,
+      doorUnlocked,
+      doorStatus: requester.doorStatus,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Mark as paid error:", error);
     res.status(500).json({ message: "Server error. Please try again." });
   }
 };

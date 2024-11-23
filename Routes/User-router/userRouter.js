@@ -4,12 +4,13 @@ const {
   getUserById,
   deleteUser,
   updateUser,
-  getUserByEmail,
+
   doorStatus,
+  getAllUsers,
 } = require("../../Controllers/User-controller/userController");
 
 // Define the route to get user data by ID
-router.post("/get", getUserByEmail);
+router.get("/get", getAllUsers);
 router.get("/:id", getUserById);
 
 router.delete("/:id", deleteUser);
