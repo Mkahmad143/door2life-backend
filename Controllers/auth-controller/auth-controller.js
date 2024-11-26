@@ -18,7 +18,14 @@ const register = async (req, res) => {
   try {
     const { username, password, email, phone, referralCode, amount } = req.body;
 
-    if (!username || !password || !email || !phone || amount == null) {
+    if (
+      !username ||
+      !password ||
+      !email ||
+      !phone ||
+      !referralCode ||
+      !amount
+    ) {
       return res.status(400).json({ Error: "Please Provide All Data" });
     }
 

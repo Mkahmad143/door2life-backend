@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
   password: String,
   phone: String,
   email: { type: String, unique: true },
-  referralCode: { type: String, unique: true },
+  referralCode: { type: String, unique: true, required: true },
   referredBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   amount: { type: Number, default: 0 },
   doorStatus: {
