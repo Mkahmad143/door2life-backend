@@ -8,7 +8,7 @@ const getReferralTree = async (req, res) => {
 
     const buildReferralTree = async (userId) => {
       const user = await User.findById(userId)
-        .select("username email referralCode referredBy")
+        .select("username email referralCode doorStatus referredBy")
         .populate("referredBy", "username email ");
 
       if (!user) return null;
@@ -19,6 +19,8 @@ const getReferralTree = async (req, res) => {
         username: user.username,
         email: user.email,
         referralCode: user.referralCode,
+        doors: user.doorStatus,
+
         referrals: [],
       };
 
