@@ -17,7 +17,7 @@ const PORT = 8000;
 app.use(express.json());
 app.use(
   cors({
-    origin: "https://door2lfe.vercel.app",
+    origin: "https://openingdoors2life.org",
   })
 );
 
